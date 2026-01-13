@@ -1,0 +1,10 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const AuthToken_1 = require("../middlewares/AuthToken");
+const branch_controller_1 = require("../controllers/branch.controller");
+const BranchRouter = (0, express_1.Router)();
+BranchRouter.post('/branch/create', AuthToken_1.verifyToken, branch_controller_1.BranchController.createBranch);
+BranchRouter.get('/branch/all', AuthToken_1.verifyToken, branch_controller_1.BranchController.getAllBranches);
+BranchRouter.get('/branch/:id', AuthToken_1.verifyToken, branch_controller_1.BranchController.updateBranchReferences);
+exports.default = BranchRouter;

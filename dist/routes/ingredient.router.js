@@ -1,0 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const AuthToken_1 = require("../middlewares/AuthToken");
+const ingredient_controller_1 = require("../controllers/ingredient.controller");
+const IngredientRoute = (0, express_1.Router)();
+IngredientRoute.post("/ingredient/create", AuthToken_1.verifyToken, ingredient_controller_1.IngredientController.createIngredient);
+IngredientRoute.get("/ingredients", AuthToken_1.verifyToken, ingredient_controller_1.IngredientController.getAllIngredients);
+IngredientRoute.put("/ingredient/update", AuthToken_1.verifyToken, ingredient_controller_1.IngredientController.updateIngredient);
+IngredientRoute.delete("/ingredient/delete", AuthToken_1.verifyToken, ingredient_controller_1.IngredientController.deleteIngredient);
+exports.default = IngredientRoute;

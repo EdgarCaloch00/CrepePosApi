@@ -111,10 +111,12 @@ export const UserController = {
         }
     },
     async getAllUser(req: any, res: any) {
-        console.log("request received");
+        console.log('📝 [getAllUser] Request received');
         try {
-            console.log("querying database");
-            const user = await prisma.user.findMany({
+            console.log('📝 [getAllUser] Prisma instance:', prisma ? 'OK' : 'NULL');
+            console.log('📝 [getAllUser] Starting database query...');
+            
+            const queryPromise = prisma.user.findMany({
             select: {
                 id: true,
                 name: true,
@@ -128,14 +130,21 @@ export const UserController = {
                 },
             },
             });
+            
+            console.log('📝 [getAllUser] Query promise created, awaiting...');
+            const user = await queryPromise;
+            console.log('📝 [getAllUser] Query completed!');
 
+            console.log(`📝 [getAllUser] Found ${user.length} users`);
             const formattedUsers = user.map((u) => ({
                 ...u,
                 id: bufferToUuid(Buffer.from(u.id)),
             }));
 
+            console.log('📝 [getAllUser] Sending response');
             res.status(200).json(formattedUsers);
         } catch (error) {
+            console.error('❌ [getAllUser] Error:', error);
             return res.status(500).json({ message: "Error de servidor" + error });
         }
     },

@@ -111,7 +111,9 @@ export const UserController = {
         }
     },
     async getAllUser(req: any, res: any) {
+        console.log("request received");
         try {
+            console.log("querying database");
             const user = await prisma.user.findMany({
             select: {
                 id: true,

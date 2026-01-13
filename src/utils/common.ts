@@ -1,4 +1,4 @@
-export function uuidToBuffer(uuid: string): Buffer {
+export function uuidToBuffer(uuid: string): any {
   if (!uuid || typeof uuid !== 'string') {
     throw new Error(`Invalid UUID provided: ${uuid}`);
   }

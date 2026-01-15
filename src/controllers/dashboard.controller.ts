@@ -16,17 +16,18 @@ export class DashboardController {
       const previousMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
       const previousMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
 
-      // Build where clause for branch filter
+      // Build where clause for branch filter - simplified
       const whereClause: any = {};
-      if (branchId) {
-        whereClause.user = {
-          user_branch: {
-            some: {
-              branch_id: Buffer.from(branchId, 'hex')
-            }
-          }
-        };
-      }
+      // For now, don't filter by branch to debug
+      // if (branchId) {
+      //   whereClause.user = {
+      //     user_branch: {
+      //       some: {
+      //         branch_id: Buffer.from(branchId, 'hex')
+      //       }
+      //     }
+      //   };
+      // }
 
       // Current month sales
       const currentMonthSales = await prisma.sale.findMany({

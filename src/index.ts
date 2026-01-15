@@ -13,6 +13,7 @@ import SaleRoute from './routes/sale.router';
 import SaleDetailRoute from './routes/sale_detail.router';
 import BranchRouter from './routes/branch.router';
 import UserBranchRouter from './routes/user_branch.router';
+import DashboardRouter from './routes/dashboard.router';
 
 const app = express();
 
@@ -33,6 +34,7 @@ app.use("/api", SaleRoute);
 app.use("/api", SaleDetailRoute);
 app.use("/api", BranchRouter);
 app.use("/api", UserBranchRouter);
+app.use("/api/dashboard", DashboardRouter);
 
 const server = app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);

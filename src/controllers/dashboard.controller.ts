@@ -6,8 +6,8 @@ export class DashboardController {
   async getStats(req: Request, res: Response) {
     try {
       const branchId = req.query.branch_id as string | undefined;
-      const startDateStr = req.query.start_date as string | undefined; // Format: YYYY-MM-DD
-      const endDateStr = req.query.end_date as string | undefined; // Format: YYYY-MM-DD
+      const filterDate = req.query.date as string | undefined; // Format: YYYY-MM-DD
+      const filterHour = req.query.hour as string | undefined; // Format: 0-23
       
       // Determine current period based on filters
       let currentPeriodStart: Date;
@@ -15,18 +15,29 @@ export class DashboardController {
       let previousPeriodStart: Date;
       let previousPeriodEnd: Date;
 
-      if (startDateStr && endDateStr) {
-        // Custom date range
-        const [startYear, startMonth, startDay] = startDateStr.split('-').map(Number);
-        const [endYear, endMonth, endDay] = endDateStr.split('-').map(Number);
+      if (filterDate && filterHour !== undefined) {
+        // Specific day and hour
+        const [year, month, day] = filterDate.split('-').map(Number);
+        const hour = parseInt(filterHour);
+        currentPeriodStart = new Date(year, month - 1, day, hour, 0, 0);
+        currentPeriodEnd = new Date(year, month - 1, day, hour, 59, 59);
         
-        currentPeriodStart = new Date(startYear, startMonth - 1, startDay, 0, 0, 0);
-        currentPeriodEnd = new Date(endYear, endMonth - 1, endDay, 23, 59, 59);
+        // Previous period: same hour previous day
+        previousPeriodStart = new Date(currentPeriodStart);
+        previousPeriodStart.setDate(previousPeriodStart.getDate() - 1);
+        previousPeriodEnd = new Date(currentPeriodEnd);
+        previousPeriodEnd.setDate(previousPeriodEnd.getDate() - 1);
+      } else if (filterDate) {
+        // Specific day only
+        const [year, month, day] = filterDate.split('-').map(Number);
+        currentPeriodStart = new Date(year, month - 1, day, 0, 0, 0);
+        currentPeriodEnd = new Date(year, month - 1, day, 23, 59, 59);
         
-        // Calculate previous period with same duration
-        const durationMs = currentPeriodEnd.getTime() - currentPeriodStart.getTime();
-        previousPeriodEnd = new Date(currentPeriodStart.getTime() - 1); // 1ms before current period
-        previousPeriodStart = new Date(previousPeriodEnd.getTime() - durationMs);
+        // Previous period: previous day
+        previousPeriodStart = new Date(currentPeriodStart);
+        previousPeriodStart.setDate(previousPeriodStart.getDate() - 1);
+        previousPeriodEnd = new Date(currentPeriodEnd);
+        previousPeriodEnd.setDate(previousPeriodEnd.getDate() - 1);
       } else {
         // Default: current month
         const now = new Date();
@@ -38,6 +49,7 @@ export class DashboardController {
         previousPeriodEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
       }
 
+      const now = new Date();
       const currentMonthStart = currentPeriodStart;
       const currentMonthEnd = currentPeriodEnd;
       const previousMonthStart = previousPeriodStart;

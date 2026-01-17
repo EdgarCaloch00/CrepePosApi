@@ -129,11 +129,56 @@ export class DashboardController {
         }
       });
 
-      // Get top 5 products
-      const topProductsData = await prisma.sale_detail.groupBy({
-        by: ['product_id'],
+      // Get top 5 product types
+      const saleDetailsWithProducts = await prisma.sale_detail.findMany({
         where: {
           product_id: { not: null },
+          sale: {
+            ...whereClause,
+            created_at: {
+              gte: last7DaysStart,
+            },
+          },
+        },
+        include: {
+          product: {
+            include: {
+              type_product: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      // Group by type_id and sum amounts
+      const typeMap = new Map<string, { name: string; sales: number }>();
+      saleDetailsWithProducts.forEach(detail => {
+        if (detail.product?.type_product) {
+const typeId = (detail.product.type_id as Buffer).toString('hex');
+          const typeName = detail.product.type_product.name;
+          const existing = typeMap.get(typeId);
+          if (existing) {
+            existing.sales += detail.amount;
+          } else {
+            typeMap.set(typeId, { name: typeName, sales: detail.amount });
+          }
+        }
+      });
+
+      // Sort and get top 5
+      const topProducts = Array.from(typeMap.values())
+        .sort((a, b) => b.sales - a.sales)
+        .slice(0, 5);
+
+      // Get top 5 combos
+      const topCombosData = await prisma.sale_detail.groupBy({
+        by: ['combo_id'],
+        where: {
+          combo_id: { not: null },
           sale: {
             ...whereClause,
             created_at: {
@@ -152,15 +197,15 @@ export class DashboardController {
         take: 5,
       });
 
-      // Get product details
-      const topProducts = await Promise.all(
-        topProductsData.map(async (item) => {
-          const product = await prisma.product.findUnique({
-            where: { id: item.product_id! },
+      // Get combo details
+      const topCombos = await Promise.all(
+        topCombosData.map(async (item) => {
+          const combo = await prisma.combo.findUnique({
+            where: { id: item.combo_id! },
             select: { name: true },
           });
           return {
-            name: product?.name || 'Unknown',
+            name: combo?.name || 'Unknown',
             sales: item._sum.amount || 0,
           };
         })
@@ -189,6 +234,7 @@ export class DashboardController {
         },
         salesByDay: salesByDay.map(v => Math.round(v)),
         topProducts,
+        topCombos,
       });
     } catch (error) {
       console.error('Error getting dashboard stats:', error);

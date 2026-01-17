@@ -6,54 +6,15 @@ export class DashboardController {
   async getStats(req: Request, res: Response) {
     try {
       const branchId = req.query.branch_id as string | undefined;
-      const filterDate = req.query.date as string | undefined; // Format: YYYY-MM-DD
-      const filterHour = req.query.hour as string | undefined; // Format: 0-23
       
-      // Determine current period based on filters
-      let currentPeriodStart: Date;
-      let currentPeriodEnd: Date;
-      let previousPeriodStart: Date;
-      let previousPeriodEnd: Date;
-
-      if (filterDate && filterHour !== undefined) {
-        // Specific day and hour
-        const [year, month, day] = filterDate.split('-').map(Number);
-        const hour = parseInt(filterHour);
-        currentPeriodStart = new Date(year, month - 1, day, hour, 0, 0);
-        currentPeriodEnd = new Date(year, month - 1, day, hour, 59, 59);
-        
-        // Previous period: same hour previous day
-        previousPeriodStart = new Date(currentPeriodStart);
-        previousPeriodStart.setDate(previousPeriodStart.getDate() - 1);
-        previousPeriodEnd = new Date(currentPeriodEnd);
-        previousPeriodEnd.setDate(previousPeriodEnd.getDate() - 1);
-      } else if (filterDate) {
-        // Specific day only
-        const [year, month, day] = filterDate.split('-').map(Number);
-        currentPeriodStart = new Date(year, month - 1, day, 0, 0, 0);
-        currentPeriodEnd = new Date(year, month - 1, day, 23, 59, 59);
-        
-        // Previous period: previous day
-        previousPeriodStart = new Date(currentPeriodStart);
-        previousPeriodStart.setDate(previousPeriodStart.getDate() - 1);
-        previousPeriodEnd = new Date(currentPeriodEnd);
-        previousPeriodEnd.setDate(previousPeriodEnd.getDate() - 1);
-      } else {
-        // Default: current month
-        const now = new Date();
-        currentPeriodStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        currentPeriodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-        
-        // Previous month
-        previousPeriodStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        previousPeriodEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
-      }
-
+      // Get current month start and end dates
       const now = new Date();
-      const currentMonthStart = currentPeriodStart;
-      const currentMonthEnd = currentPeriodEnd;
-      const previousMonthStart = previousPeriodStart;
-      const previousMonthEnd = previousPeriodEnd;
+      const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+      
+      // Get previous month start and end dates
+      const previousMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const previousMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
 
       // Build where clause for branch filter - simplified
       const whereClause: any = {};
@@ -142,7 +103,33 @@ export class DashboardController {
         ? ((currentAvgTicket - previousAvgTicket) / previousAvgTicket * 100).toFixed(1)
         : '0.0';
 
-      // Get top 5 products for the current period
+      // Get last 7 days sales
+      const last7DaysStart = new Date();
+      last7DaysStart.setDate(last7DaysStart.getDate() - 6);
+      last7DaysStart.setHours(0, 0, 0, 0);
+
+      const last7DaysSales = await prisma.sale.findMany({
+        where: {
+          ...whereClause,
+          created_at: {
+            gte: last7DaysStart,
+          },
+        },
+        orderBy: {
+          created_at: 'asc',
+        },
+      });
+
+      // Group sales by day
+      const salesByDay = Array(7).fill(0);
+      last7DaysSales.forEach(sale => {
+        const dayIndex = Math.floor((sale.created_at.getTime() - last7DaysStart.getTime()) / (1000 * 60 * 60 * 24));
+        if (dayIndex >= 0 && dayIndex < 7) {
+          salesByDay[dayIndex] += sale.total;
+        }
+      });
+
+      // Get top 5 products
       const topProductsData = await prisma.sale_detail.groupBy({
         by: ['product_id'],
         where: {
@@ -150,8 +137,7 @@ export class DashboardController {
           sale: {
             ...whereClause,
             created_at: {
-              gte: currentPeriodStart,
-              lte: currentPeriodEnd,
+              gte: last7DaysStart,
             },
           },
         },
@@ -201,6 +187,7 @@ export class DashboardController {
           change: avgTicketChange,
           positive: parseFloat(avgTicketChange) >= 0,
         },
+        salesByDay: salesByDay.map(v => Math.round(v)),
         topProducts,
       });
     } catch (error) {
